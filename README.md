@@ -318,3 +318,40 @@ builder.Services.AddOpenTelemetry()
     });
 ```
 dfs
+
+Geração de Spans:
+
+```csharp
+        using var activity1 = OpenTelemetryExtensions.ActivitySource
+            .StartActivity("GerarValorContagem")!;
+
+        lock (_CONTADOR)
+        {
+            _CONTADOR.Incrementar();
+            valorAtualContador = _CONTADOR.ValorAtual;
+        }
+
+        activity1.SetTag("valorAtual", valorAtualContador);
+        _logger.LogValorAtual(valorAtualContador);
+
+        var resultado = new ResultadoContador()
+        {
+            ValorAtual = valorAtualContador,
+            Producer = _CONTADOR.Local,
+            Kernel = _CONTADOR.Kernel,
+            Framework = _CONTADOR.Framework,
+            Mensagem = _configuration["MensagemVariavel"]
+        };
+        activity1.Stop();
+
+        using var activity2 = OpenTelemetryExtensions.ActivitySource
+            .StartActivity("RegistrarRetornarValorContagem")!;
+        
+        _repository.Insert(resultado);
+        _logger.LogInformation($"Registro inserido com sucesso! Valor: {valorAtualContador}");
+        
+        activity2.SetTag("valorAtual", valorAtualContador);
+        activity2.SetTag("horario", $"{DateTime.UtcNow.AddHours(-3):HH:mm:ss}");
+
+        return resultado;
+```
