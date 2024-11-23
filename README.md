@@ -253,6 +253,7 @@ overrides:
     metrics_generator:
       processors: [service-graphs, span-metrics, local-blocks] # enables metrics generator
       generate_native_histograms: both
+```
 
 ### API que utiliza PostgreSQL
 
