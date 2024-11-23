@@ -253,3 +253,67 @@ overrides:
     metrics_generator:
       processors: [service-graphs, span-metrics, local-blocks] # enables metrics generator
       generate_native_histograms: both
+
+### API que utiliza PostgreSQL
+
+Packages utilizados:
+- Npgsql.EntityFrameworkCore.PostgreSQL
+- Npgsql.OpenTelemetry
+- OpenTelemetry.Exporter.Console
+- OpenTelemetry.Exporter.OpenTelemetryProtocol
+- OpenTelemetry.Extensions.Hosting
+- OpenTelemetry.Instrumentation.AspNetCore
+- OpenTelemetry.Instrumentation.Http
+- OpenTelemetry.Instrumentation.Runtime
+- Serilog.AspNetCore
+- Serilog.Enrichers.Span
+- Serilog.Sinks.Grafana.Loki
+- Swashbuckle.AspNetCore
+
+Configuração do OpenTelemetry e Loki:
+
+```csharp
+builder.Services.AddScoped<ContagemRepository>();
+
+builder.Services.AddSerilog(new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.GrafanaLoki(
+        builder.Configuration["Loki:Uri"]!,
+        new List<LokiLabel>()
+        {
+            new()
+            {
+                Key = "service_name",
+                Value = OpenTelemetryExtensions.ServiceName
+            },
+            new()
+            {
+                Key = "using_database",
+                Value = "true"
+            }
+        })
+    .Enrich.WithSpan(new SpanOptions() { IncludeOperationName = true, IncludeTags = true })
+    .CreateLogger());
+
+builder.Services.AddDbContext<ContagemContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("BaseContagem"));
+});
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing((traceBuilder) =>
+    {
+        traceBuilder
+            .AddSource(OpenTelemetryExtensions.ServiceName)
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService(serviceName: OpenTelemetryExtensions.ServiceName,
+                        serviceVersion: OpenTelemetryExtensions.ServiceVersion))
+            .AddAspNetCoreInstrumentation()
+            .AddNpgsql()
+            .AddOtlpExporter()
+            .AddConsoleExporter();
+    });
+```
+dfs
