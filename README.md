@@ -317,7 +317,6 @@ builder.Services.AddOpenTelemetry()
             .AddConsoleExporter();
     });
 ```
-dfs
 
 Geração de Spans:
 
